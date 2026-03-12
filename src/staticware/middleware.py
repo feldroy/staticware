@@ -75,6 +75,8 @@ class StaticFiles:
         for file_path in self.directory.rglob("*"):
             if not file_path.is_file():
                 continue
+            if not file_path.resolve().is_relative_to(self.directory):
+                continue
 
             relative = file_path.relative_to(self.directory).as_posix()
             content = file_path.read_bytes()

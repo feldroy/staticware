@@ -114,6 +114,16 @@ def test_nonexistent_directory(tmp_path: Path) -> None:
     assert s.file_map == {}
 
 
+def test_symlinks_outside_directory_excluded(tmp_path: Path) -> None:
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
+    outside = tmp_path / "secret.txt"
+    outside.write_text("secret data")
+    (static_dir / "link.txt").symlink_to(outside)
+    s = StaticFiles(static_dir)
+    assert "link.txt" not in s.file_map
+
+
 # ── StaticFiles: ASGI serving ───────────────────────────────────────────
 
 
