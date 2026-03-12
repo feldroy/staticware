@@ -1,137 +1,81 @@
 # Contributing
 
-Contributions are welcome, and they are greatly appreciated! Every little bit helps, and credit will always be given.
+Staticware is about 270 lines of production code. You can read the entire middleware in one sitting, and that's intentional. Contributions that keep the project small and focused are the ones that land.
 
-You can contribute in many ways:
+## Understanding the Project
 
-## Types of Contributions
+Before contributing, read `src/staticware/middleware.py`. The whole thing. It's two classes, a couple of helpers, and zero runtime dependencies. The zero-dependency constraint is a design choice: every ASGI framework already has enough dependencies. Staticware should not add to the pile.
 
-### Report Bugs
+The test suite at `tests/test_staticware.py` talks directly to the ASGI protocol. Tests construct scope dicts, call the middleware, and collect `send()` messages. No framework test client, no HTTP library. If you're adding a feature, your test should work at the same level.
 
-Report bugs at https://github.com/feldroy/staticware/issues.
+## What We're Looking For
 
-If you are reporting a bug, please include:
+Bug reports, test cases, docs improvements, and features that fit the project's scope. File issues and pull requests at https://github.com/feldroy/staticware/issues.
 
-- Your operating system name and version.
-- Any details about your local setup that might be helpful in troubleshooting.
-- Detailed steps to reproduce the bug.
+If you're proposing a feature, open an issue first. Describe what it does and why it belongs in a static file middleware. Not everything does, and that's fine.
 
-### Fix Bugs
+## AI Contributions
 
-Look through the GitHub issues for bugs. Anything tagged with "bug" and "help wanted" is open to whoever wants to implement it.
+AI-assisted contributions are welcome. AI-generated slop is not.
 
-### Implement Features
+If you use an AI tool to write code for this project, you are responsible for every line it produces. Review it the way you'd review a junior developer's pull request: check the logic, verify the tests actually test what they claim, and make sure the commit messages explain the why, not just the what.
 
-Look through the GitHub issues for features. Anything tagged with "enhancement" and "help wanted" is open to whoever wants to implement it.
+Specific expectations:
 
-### Write Documentation
+- **Tight.** No boilerplate, no placeholder comments, no "Replace this with..." stubs. If the AI generated scaffolding, strip it before submitting.
+- **Atomic.** One logical change per commit. If your PR touches the middleware and the docs and the CI config, those should be separate commits with separate messages.
+- **Tested.** Red/green TDD: write a failing test, then write the code that makes it pass. If you can't write the failing test first, you probably don't understand the change well enough yet.
 
-Staticware could always use more documentation, whether as part of the official docs, in docstrings, or even on the web in blog posts, articles, and such.
+## Development Setup
 
-To preview the docs locally:
+```sh
+git clone git@github.com:your_name_here/staticware.git
+cd staticware/
+uv sync
+```
+
+Run the full quality suite (format, lint, type check, test):
+
+```sh
+just qa
+```
+
+Run tests alone:
+
+```sh
+just test
+```
+
+Preview docs locally:
 
 ```sh
 just docs-serve
 ```
 
-This starts a local server at http://localhost:8000 with live reload. Edit files in `docs/` or add docstrings to your code (the API reference page is auto-generated).
-
-### Submit Feedback
-
-The best way to send feedback is to file an issue at https://github.com/feldroy/staticware/issues.
-
-If you are proposing a feature:
-
-- Explain in detail how it would work.
-- Keep the scope as narrow as possible, to make it easier to implement.
-- Remember that this is a volunteer-driven project, and that contributions are welcome :)
-
-## Get Started!
-
-Ready to contribute? Here's how to set up `staticware` for local development.
-
-1. Fork the `staticware` repo on GitHub.
-2. Clone your fork locally:
-
-   ```sh
-   git clone git@github.com:your_name_here/staticware.git
-   ```
-
-3. Install your local copy with uv:
-
-   ```sh
-   cd staticware/
-   uv sync
-   ```
-
-4. Create a branch for local development:
-
-   ```sh
-   git checkout -b name-of-your-bugfix-or-feature
-   ```
-
-   Now you can make your changes locally.
-
-5. When you're done making changes, check that your changes pass linting and the tests:
-
-   ```sh
-   just qa
-   ```
-
-   Or run the tests alone:
-
-   ```sh
-   just test
-   ```
-
-6. Commit your changes and push your branch to GitHub:
-
-   ```sh
-   git add .
-   git commit -m "Your detailed description of your changes."
-   git push origin name-of-your-bugfix-or-feature
-   ```
-
-7. Submit a pull request through the GitHub website.
-
 ## Pull Request Guidelines
 
-Before you submit a pull request, check that it meets these guidelines:
+1. Include tests. The coverage threshold is 90% and the project currently sits at 98%.
+2. If you add functionality, update the docs and the README features list.
+3. Tests must pass on Python 3.12, 3.13, and 3.14. CI runs automatically on every PR.
 
-1. The pull request should include tests.
-2. If the pull request adds functionality, the docs should be updated. Put your new functionality into a function with a docstring, and add the feature to the list in README.md.
-3. The pull request should work for Python 3.12, 3.13, and 3.14. Tests run in GitHub Actions on every pull request to the main branch, make sure that the tests pass for all supported Python versions.
+## Releasing
 
-## Tips
-
-To run a subset of tests:
-
-```sh
-uv run pytest tests/
-```
-
-## Releasing a New Version
-
-1. **Bump the version** and **write the changelog:**
+1. Bump the version:
    ```bash
    uv version <version>        # or: uv version --bump minor
    ```
-   Then write `CHANGELOG/<version>.md`. See previous entries for the format.
-2. **Commit:**
+   Then write `CHANGELOG/<version>.md`.
+2. Commit:
    ```bash
    git add pyproject.toml uv.lock CHANGELOG/
    git commit -m "Release <version>"
    ```
-3. **Tag and push:**
+3. Tag and push:
    ```bash
    just tag
    ```
-   This creates an annotated `v*` tag from the version in `pyproject.toml`
-   and pushes the commit and tag to GitHub.
-4. **Wait for the publish workflow.** The tag triggers `.github/workflows/publish.yml`,
-   which builds the package, generates SLSA provenance attestations, and publishes
-   to PyPI via trusted publishing.
-5. **Create the GitHub Release:**
+4. Wait for the publish workflow to build, attest, and publish to PyPI.
+5. Create the GitHub Release:
    ```bash
    gh release create v<version> --verify-tag \
      --title "Staticware <version>" \
@@ -140,4 +84,4 @@ uv run pytest tests/
 
 ## Code of Conduct
 
-Please note that this project is released with a [Contributor Code of Conduct](CODE_OF_CONDUCT.md). By participating in this project you agree to abide by its terms.
+This project follows the [Contributor Code of Conduct](CODE_OF_CONDUCT.md).
