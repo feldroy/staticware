@@ -1,4 +1,18 @@
-"""Tests for staticware."""
+"""Tests for staticware.
+
+Async test detection:
+    pytest-asyncio is configured with asyncio_mode = "auto" in pyproject.toml.
+    This means any test written as ``async def`` automatically runs on an event
+    loop. Regular ``def`` tests run normally without one.
+
+    Use ``async def`` for tests that call ASGI apps (they are async callables).
+    Use plain ``def`` for tests that only exercise sync APIs like StaticFiles()
+    construction, url(), and file_map lookups.
+
+    Do NOT write ``async def`` for a test that has no await in its body. It will
+    still pass, but it runs on an event loop for no reason and misleads readers
+    into thinking the test exercises async behavior.
+"""
 
 import hashlib
 from pathlib import Path
@@ -154,7 +168,6 @@ def test_multi_dot_filename(tmp_path: Path) -> None:
 # ── StaticFiles: ASGI serving ───────────────────────────────────────────
 
 
-@pytest.mark.asyncio
 async def test_serve_original_filename(static: StaticFiles, static_dir: Path) -> None:
     resp = ResponseCollector()
     await static(make_scope("/static/styles.css"), receive, resp)
@@ -163,7 +176,6 @@ async def test_serve_original_filename(static: StaticFiles, static_dir: Path) ->
     assert b"cache-control" not in resp.headers
 
 
-@pytest.mark.asyncio
 async def test_serve_hashed_filename_with_immutable_cache(static: StaticFiles) -> None:
     hashed_name = static.file_map["styles.css"]
     resp = ResponseCollector()
@@ -173,28 +185,24 @@ async def test_serve_hashed_filename_with_immutable_cache(static: StaticFiles) -
     assert resp.headers[b"cache-control"] == b"public, max-age=31536000, immutable"
 
 
-@pytest.mark.asyncio
 async def test_serve_404_for_missing_file(static: StaticFiles) -> None:
     resp = ResponseCollector()
     await static(make_scope("/static/nope.css"), receive, resp)
     assert resp.status == 404
 
 
-@pytest.mark.asyncio
 async def test_serve_404_outside_prefix(static: StaticFiles) -> None:
     resp = ResponseCollector()
     await static(make_scope("/other/styles.css"), receive, resp)
     assert resp.status == 404
 
 
-@pytest.mark.asyncio
 async def test_path_traversal_rejected(static: StaticFiles) -> None:
     resp = ResponseCollector()
     await static(make_scope("/static/../../etc/passwd"), receive, resp)
     assert resp.status == 404
 
 
-@pytest.mark.asyncio
 async def test_non_http_scope_ignored(static: StaticFiles) -> None:
     """WebSocket and lifespan scopes should be silently ignored."""
     resp = ResponseCollector()
@@ -202,7 +210,6 @@ async def test_non_http_scope_ignored(static: StaticFiles) -> None:
     assert resp.status == 0  # send was never called
 
 
-@pytest.mark.asyncio
 async def test_serve_subdirectory_file(static: StaticFiles) -> None:
     resp = ResponseCollector()
     await static(make_scope("/static/images/logo.png"), receive, resp)
@@ -210,7 +217,6 @@ async def test_serve_subdirectory_file(static: StaticFiles) -> None:
     assert resp.body == b"\x89PNG fake image data"
 
 
-@pytest.mark.asyncio
 async def test_content_type_header(static: StaticFiles) -> None:
     resp = ResponseCollector()
     await static(make_scope("/static/styles.css"), receive, resp)
@@ -255,7 +261,6 @@ def make_json_app(data: bytes):
     return app
 
 
-@pytest.mark.asyncio
 async def test_rewrite_html_response(static: StaticFiles) -> None:
     html = '<link href="/static/styles.css">'
     app = StaticRewriteMiddleware(make_html_app(html), static=static)
@@ -267,7 +272,6 @@ async def test_rewrite_html_response(static: StaticFiles) -> None:
     assert "/static/styles.css" not in resp.text
 
 
-@pytest.mark.asyncio
 async def test_rewrite_updates_content_length(static: StaticFiles) -> None:
     html = '<link href="/static/styles.css">'
     app = StaticRewriteMiddleware(make_html_app(html), static=static)
@@ -278,7 +282,6 @@ async def test_rewrite_updates_content_length(static: StaticFiles) -> None:
     assert declared_length == len(resp.body)
 
 
-@pytest.mark.asyncio
 async def test_rewrite_leaves_unknown_paths_alone(static: StaticFiles) -> None:
     html = '<script src="/static/app.js"></script>'
     app = StaticRewriteMiddleware(make_html_app(html), static=static)
@@ -287,7 +290,6 @@ async def test_rewrite_leaves_unknown_paths_alone(static: StaticFiles) -> None:
     assert "/static/app.js" in resp.text
 
 
-@pytest.mark.asyncio
 async def test_non_html_passes_through(static: StaticFiles) -> None:
     data = b'{"path": "/static/styles.css"}'
     app = StaticRewriteMiddleware(make_json_app(data), static=static)
@@ -296,7 +298,6 @@ async def test_non_html_passes_through(static: StaticFiles) -> None:
     assert resp.body == data
 
 
-@pytest.mark.asyncio
 async def test_rewrite_multiple_paths(static: StaticFiles) -> None:
     html = '<link href="/static/styles.css"><img src="/static/images/logo.png">'
     app = StaticRewriteMiddleware(make_html_app(html), static=static)
@@ -307,7 +308,6 @@ async def test_rewrite_multiple_paths(static: StaticFiles) -> None:
     assert f"/static/{static.file_map['images/logo.png']}" in resp.text
 
 
-@pytest.mark.asyncio
 async def test_rewrite_non_http_passes_through(static: StaticFiles) -> None:
     """Non-HTTP scopes are forwarded to the wrapped app without rewriting."""
     calls: list[str] = []
@@ -320,7 +320,6 @@ async def test_rewrite_non_http_passes_through(static: StaticFiles) -> None:
     assert calls == ["websocket"]
 
 
-@pytest.mark.asyncio
 async def test_rewrite_raises_runtime_error_on_body_before_start(
     static: StaticFiles,
 ) -> None:
@@ -344,7 +343,6 @@ async def test_rewrite_raises_runtime_error_on_body_before_start(
         await app(make_scope("/"), receive, ResponseCollector())
 
 
-@pytest.mark.asyncio
 async def test_rewrite_streaming_html_response(static: StaticFiles) -> None:
     """Middleware rewrites static paths even when the body arrives in multiple chunks."""
     chunk1 = b'<link href="/static/'
@@ -372,7 +370,6 @@ async def test_rewrite_streaming_html_response(static: StaticFiles) -> None:
     assert "/static/styles.css" not in resp.text
 
 
-@pytest.mark.asyncio
 async def test_serve_prefix_only_returns_404(static: StaticFiles) -> None:
     """Requesting /static or /static/ with no filename returns 404."""
     # /static with no trailing slash
@@ -386,7 +383,6 @@ async def test_serve_prefix_only_returns_404(static: StaticFiles) -> None:
     assert resp_slash.status == 404
 
 
-@pytest.mark.asyncio
 async def test_rewrite_non_utf8_html_passes_through(static: StaticFiles) -> None:
     """HTML response with non-UTF-8 bytes passes through unchanged."""
     raw_body = b"<html>\x80\x81\x82 not valid utf-8</html>"

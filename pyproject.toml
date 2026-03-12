@@ -56,6 +56,11 @@ Documentation = "https://feldroy.github.io/staticware/"
 Homepage = "https://github.com/feldroy/staticware"
 Source = "https://github.com/feldroy/staticware"
 
+[tool.pytest.ini_options]
+# "auto" means any `async def test_*` runs on an event loop automatically.
+# No @pytest.mark.asyncio decorator needed. Plain `def test_*` runs normally.
+asyncio_mode = "auto"
+
 [tool.ty]
 # All rules are enabled as "error" by default; no need to specify unless overriding.
 # Example override: relax a rule for the entire project (uncomment if needed).
