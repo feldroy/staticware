@@ -198,6 +198,10 @@ class StaticRewriteMiddleware:
                 return
 
             if message["type"] == "http.response.body":
+                if response_start is None:
+                    raise RuntimeError(
+                        "http.response.body received before http.response.start"
+                    )
                 if not is_html:
                     await send(message)
                     return
@@ -215,7 +219,10 @@ class StaticRewriteMiddleware:
                     except UnicodeDecodeError:
                         pass
 
-                    assert response_start is not None
+                    if response_start is None:
+                        raise RuntimeError(
+                            "http.response.body received before http.response.start"
+                        )
                     new_headers = [
                         (k, str(len(full_body)).encode("latin-1"))
                         if k == b"content-length"

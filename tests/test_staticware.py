@@ -318,3 +318,27 @@ async def test_rewrite_non_http_passes_through(static: StaticFiles) -> None:
     app = StaticRewriteMiddleware(ws_app, static=static)
     await app({"type": "websocket", "path": "/"}, receive, ResponseCollector())
     assert calls == ["websocket"]
+
+
+@pytest.mark.asyncio
+async def test_rewrite_raises_runtime_error_on_body_before_start(
+    static: StaticFiles,
+) -> None:
+    """Middleware should raise RuntimeError if app sends body before start.
+
+    An ASGI app that sends http.response.body without first sending
+    http.response.start is violating the protocol.  The middleware must
+    detect this and raise RuntimeError (not AssertionError, which would
+    be stripped by python -O).
+    """
+
+    async def broken_app(scope: dict, receive: Any, send: Any) -> None:
+        # Skip http.response.start entirely — straight to body.
+        await send({
+            "type": "http.response.body",
+            "body": b"<html>oops</html>",
+        })
+
+    app = StaticRewriteMiddleware(broken_app, static=static)
+    with pytest.raises(RuntimeError):
+        await app(make_scope("/"), receive, ResponseCollector())
