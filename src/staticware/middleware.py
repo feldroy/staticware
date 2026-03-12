@@ -3,9 +3,9 @@
 Zero dependencies beyond the Python standard library. Works with any ASGI
 framework: Starlette, FastAPI, Air, Litestar, Django, or raw ASGI.
 
-    from staticware import StaticFiles, StaticRewriteMiddleware
+    from staticware import HashedStatic, StaticRewriteMiddleware
 
-    static = StaticFiles("static")
+    static = HashedStatic("static")
 
     # Wrap any ASGI app to rewrite /static/styles.css -> /static/styles.a1b2c3d4.css
     app = StaticRewriteMiddleware(your_app, static=static)
@@ -30,7 +30,7 @@ type Send = Callable[[dict[str, Any]], Awaitable[None]]
 type ASGIApp = Callable[[Scope, Receive, Send], Awaitable[None]]
 
 
-class StaticFiles:
+class HashedStatic:
     """Serve static files with content-hashed filenames.
 
     Computes SHA-256 hashes of every file in ``directory`` at startup.
@@ -40,7 +40,7 @@ class StaticFiles:
 
     This is a mountable ASGI app *and* a URL resolver::
 
-        static = StaticFiles("static")
+        static = HashedStatic("static")
 
         # Mount it however your framework mounts sub-apps:
         app.mount("/static", static)
@@ -164,7 +164,7 @@ class StaticRewriteMiddleware:
         app = StaticRewriteMiddleware(app, static=static)
     """
 
-    def __init__(self, app: ASGIApp, *, static: StaticFiles) -> None:
+    def __init__(self, app: ASGIApp, *, static: HashedStatic) -> None:
         self.app = app
         self.static = static
         escaped = re.escape(static.prefix)

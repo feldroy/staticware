@@ -2,12 +2,12 @@
 
 ## Basic Setup
 
-Create a `StaticFiles` instance pointing at your static files directory, then wrap your ASGI app with `StaticRewriteMiddleware`:
+Create a `HashedStatic` instance pointing at your static files directory, then wrap your ASGI app with `StaticRewriteMiddleware`:
 
 ```python
-from staticware import StaticFiles, StaticRewriteMiddleware
+from staticware import HashedStatic, StaticRewriteMiddleware
 
-static = StaticFiles("static")
+static = HashedStatic("static")
 
 # Mount it however your framework mounts sub-apps:
 app.mount("/static", static)
@@ -16,9 +16,9 @@ app.mount("/static", static)
 app = StaticRewriteMiddleware(app, static=static)
 ```
 
-`StaticFiles` hashes every file in the directory at startup. When a browser requests the hashed filename, it gets an immutable cache header. When it requests the original filename, the file is served without aggressive caching.
+`HashedStatic` hashes every file in the directory at startup. When a browser requests the hashed filename, it gets an immutable cache header. When it requests the original filename, the file is served without aggressive caching.
 
-File hashes are computed once when `StaticFiles` is created. If you deploy updated static files, restart the ASGI process to pick up the new hashes. This is the same model used by Starlette and most ASGI static file handlers.
+File hashes are computed once when `HashedStatic` is created. If you deploy updated static files, restart the ASGI process to pick up the new hashes. This is the same model used by Starlette and most ASGI static file handlers.
 
 ## Resolving URLs in Templates
 
@@ -46,7 +46,7 @@ This means cache busting works even without explicit `static.url()` calls in tem
 ### Custom Prefix
 
 ```python
-static = StaticFiles("static", prefix="/assets")
+static = HashedStatic("static", prefix="/assets")
 static.url("styles.css")  # /assets/styles.a1b2c3d4.css
 ```
 
@@ -55,5 +55,5 @@ static.url("styles.css")  # /assets/styles.a1b2c3d4.css
 The default hash is 8 characters from the SHA-256 digest. To change it:
 
 ```python
-static = StaticFiles("static", hash_length=12)
+static = HashedStatic("static", hash_length=12)
 ```

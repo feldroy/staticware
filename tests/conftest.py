@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from staticware import StaticFiles
+from staticware import HashedStatic
 
 
 @pytest.fixture()
@@ -17,5 +17,5 @@ def static_dir(tmp_path: Path) -> Path:
 
 
 @pytest.fixture()
-def static(static_dir: Path) -> StaticFiles:
-    return StaticFiles(static_dir)
+def static(static_dir: Path) -> HashedStatic:
+    return HashedStatic(static_dir)

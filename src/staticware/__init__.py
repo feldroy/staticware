@@ -1,5 +1,5 @@
 """Top-level package for Staticware."""
 
-from staticware.middleware import StaticFiles, StaticRewriteMiddleware
+from staticware.middleware import HashedStatic, StaticRewriteMiddleware
 
-__all__ = ["StaticFiles", "StaticRewriteMiddleware"]
+__all__ = ["HashedStatic", "StaticRewriteMiddleware"]

@@ -6,7 +6,7 @@ Async test detection:
     loop. Regular ``def`` tests run normally without one.
 
     Use ``async def`` for tests that call ASGI apps (they are async callables).
-    Use plain ``def`` for tests that only exercise sync APIs like StaticFiles()
+    Use plain ``def`` for tests that only exercise sync APIs like HashedStatic()
     construction, url(), and file_map lookups.
 
     Do NOT write ``async def`` for a test that has no await in its body. It will
@@ -20,7 +20,7 @@ from typing import Any
 
 import pytest
 
-from staticware import StaticFiles, StaticRewriteMiddleware
+from staticware import HashedStatic, StaticRewriteMiddleware
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
@@ -58,49 +58,49 @@ def expected_hash(content: bytes, length: int = 8) -> str:
     return hashlib.sha256(content).hexdigest()[:length]
 
 
-# ── StaticFiles: hashing and url() ──────────────────────────────────────
+# ── HashedStatic: hashing and url() ──────────────────────────────────────
 
 
 
-def test_file_map_contains_all_files(static: StaticFiles, static_dir: Path) -> None:
+def test_file_map_contains_all_files(static: HashedStatic, static_dir: Path) -> None:
     assert "styles.css" in static.file_map
     assert "images/logo.png" in static.file_map
 
 
-def test_hash_is_correct(static: StaticFiles, static_dir: Path) -> None:
+def test_hash_is_correct(static: HashedStatic, static_dir: Path) -> None:
     css_content = (static_dir / "styles.css").read_bytes()
     h = expected_hash(css_content)
     assert static.file_map["styles.css"] == f"styles.{h}.css"
 
 
-def test_hash_in_subdirectory(static: StaticFiles, static_dir: Path) -> None:
+def test_hash_in_subdirectory(static: HashedStatic, static_dir: Path) -> None:
     png_content = (static_dir / "images" / "logo.png").read_bytes()
     h = expected_hash(png_content)
     assert static.file_map["images/logo.png"] == f"images/logo.{h}.png"
 
 
-def test_url_returns_hashed_path(static: StaticFiles) -> None:
+def test_url_returns_hashed_path(static: HashedStatic) -> None:
     url = static.url("styles.css")
     assert url.startswith("/static/styles.")
     assert url.endswith(".css")
     assert url != "/static/styles.css"
 
 
-def test_url_unknown_file_returns_unchanged(static: StaticFiles) -> None:
+def test_url_unknown_file_returns_unchanged(static: HashedStatic) -> None:
     assert static.url("nonexistent.js") == "/static/nonexistent.js"
 
 
-def test_url_strips_leading_slash(static: StaticFiles) -> None:
+def test_url_strips_leading_slash(static: HashedStatic) -> None:
     assert static.url("/styles.css") == static.url("styles.css")
 
 
 def test_custom_prefix(static_dir: Path) -> None:
-    s = StaticFiles(static_dir, prefix="/assets")
+    s = HashedStatic(static_dir, prefix="/assets")
     assert s.url("styles.css").startswith("/assets/")
 
 
 def test_custom_hash_length(static_dir: Path) -> None:
-    s = StaticFiles(static_dir, hash_length=4)
+    s = HashedStatic(static_dir, hash_length=4)
     url = s.url("styles.css")
     # /static/styles.XXXX.css — 4-char hash
     stem = url.split("/")[-1]  # styles.XXXX.css
@@ -109,7 +109,7 @@ def test_custom_hash_length(static_dir: Path) -> None:
 
 
 def test_nonexistent_directory(tmp_path: Path) -> None:
-    s = StaticFiles(tmp_path / "nope")
+    s = HashedStatic(tmp_path / "nope")
     assert s.file_map == {}
 
 
@@ -119,7 +119,7 @@ def test_symlinks_outside_directory_excluded(tmp_path: Path) -> None:
     outside = tmp_path / "secret.txt"
     outside.write_text("secret data")
     (static_dir / "link.txt").symlink_to(outside)
-    s = StaticFiles(static_dir)
+    s = HashedStatic(static_dir)
     assert "link.txt" not in s.file_map
 
 
@@ -127,7 +127,7 @@ def test_extensionless_file(tmp_path: Path) -> None:
     d = tmp_path / "static"
     d.mkdir()
     (d / "Makefile").write_text("all: build")
-    s = StaticFiles(d)
+    s = HashedStatic(d)
     h = expected_hash(b"all: build")
     assert s.file_map["Makefile"] == f"Makefile.{h}"
 
@@ -136,7 +136,7 @@ def test_dotfile(tmp_path: Path) -> None:
     d = tmp_path / "static"
     d.mkdir()
     (d / ".gitignore").write_text("*.pyc")
-    s = StaticFiles(d)
+    s = HashedStatic(d)
     h = expected_hash(b"*.pyc")
     assert s.file_map[".gitignore"] == f".gitignore.{h}"
 
@@ -145,15 +145,15 @@ def test_multi_dot_filename(tmp_path: Path) -> None:
     d = tmp_path / "static"
     d.mkdir()
     (d / "jquery.min.js").write_text("js code")
-    s = StaticFiles(d)
+    s = HashedStatic(d)
     h = expected_hash(b"js code")
     assert s.file_map["jquery.min.js"] == f"jquery.min.{h}.js"
 
 
-# ── StaticFiles: ASGI serving ───────────────────────────────────────────
+# ── HashedStatic: ASGI serving ───────────────────────────────────────────
 
 
-async def test_serve_original_filename(static: StaticFiles, static_dir: Path) -> None:
+async def test_serve_original_filename(static: HashedStatic, static_dir: Path) -> None:
     resp = ResponseCollector()
     await static(make_scope("/static/styles.css"), receive, resp)
     assert resp.status == 200
@@ -161,7 +161,7 @@ async def test_serve_original_filename(static: StaticFiles, static_dir: Path) ->
     assert b"cache-control" not in resp.headers
 
 
-async def test_serve_hashed_filename_with_immutable_cache(static: StaticFiles) -> None:
+async def test_serve_hashed_filename_with_immutable_cache(static: HashedStatic) -> None:
     hashed_name = static.file_map["styles.css"]
     resp = ResponseCollector()
     await static(make_scope(f"/static/{hashed_name}"), receive, resp)
@@ -170,39 +170,39 @@ async def test_serve_hashed_filename_with_immutable_cache(static: StaticFiles) -
     assert resp.headers[b"cache-control"] == b"public, max-age=31536000, immutable"
 
 
-async def test_serve_404_for_missing_file(static: StaticFiles) -> None:
+async def test_serve_404_for_missing_file(static: HashedStatic) -> None:
     resp = ResponseCollector()
     await static(make_scope("/static/nope.css"), receive, resp)
     assert resp.status == 404
 
 
-async def test_serve_404_outside_prefix(static: StaticFiles) -> None:
+async def test_serve_404_outside_prefix(static: HashedStatic) -> None:
     resp = ResponseCollector()
     await static(make_scope("/other/styles.css"), receive, resp)
     assert resp.status == 404
 
 
-async def test_path_traversal_rejected(static: StaticFiles) -> None:
+async def test_path_traversal_rejected(static: HashedStatic) -> None:
     resp = ResponseCollector()
     await static(make_scope("/static/../../etc/passwd"), receive, resp)
     assert resp.status == 404
 
 
-async def test_non_http_scope_ignored(static: StaticFiles) -> None:
+async def test_non_http_scope_ignored(static: HashedStatic) -> None:
     """WebSocket and lifespan scopes should be silently ignored."""
     resp = ResponseCollector()
     await static({"type": "websocket", "path": "/static/styles.css"}, receive, resp)
     assert resp.status == 0  # send was never called
 
 
-async def test_serve_subdirectory_file(static: StaticFiles) -> None:
+async def test_serve_subdirectory_file(static: HashedStatic) -> None:
     resp = ResponseCollector()
     await static(make_scope("/static/images/logo.png"), receive, resp)
     assert resp.status == 200
     assert resp.body == b"\x89PNG fake image data"
 
 
-async def test_content_type_header(static: StaticFiles) -> None:
+async def test_content_type_header(static: HashedStatic) -> None:
     resp = ResponseCollector()
     await static(make_scope("/static/styles.css"), receive, resp)
     assert b"text/css" in resp.headers[b"content-type"]
@@ -246,7 +246,7 @@ def make_json_app(data: bytes):
     return app
 
 
-async def test_rewrite_html_response(static: StaticFiles) -> None:
+async def test_rewrite_html_response(static: HashedStatic) -> None:
     html = '<link href="/static/styles.css">'
     app = StaticRewriteMiddleware(make_html_app(html), static=static)
     resp = ResponseCollector()
@@ -257,7 +257,7 @@ async def test_rewrite_html_response(static: StaticFiles) -> None:
     assert "/static/styles.css" not in resp.text
 
 
-async def test_rewrite_updates_content_length(static: StaticFiles) -> None:
+async def test_rewrite_updates_content_length(static: HashedStatic) -> None:
     html = '<link href="/static/styles.css">'
     app = StaticRewriteMiddleware(make_html_app(html), static=static)
     resp = ResponseCollector()
@@ -267,7 +267,7 @@ async def test_rewrite_updates_content_length(static: StaticFiles) -> None:
     assert declared_length == len(resp.body)
 
 
-async def test_rewrite_leaves_unknown_paths_alone(static: StaticFiles) -> None:
+async def test_rewrite_leaves_unknown_paths_alone(static: HashedStatic) -> None:
     html = '<script src="/static/app.js"></script>'
     app = StaticRewriteMiddleware(make_html_app(html), static=static)
     resp = ResponseCollector()
@@ -275,7 +275,7 @@ async def test_rewrite_leaves_unknown_paths_alone(static: StaticFiles) -> None:
     assert "/static/app.js" in resp.text
 
 
-async def test_non_html_passes_through(static: StaticFiles) -> None:
+async def test_non_html_passes_through(static: HashedStatic) -> None:
     data = b'{"path": "/static/styles.css"}'
     app = StaticRewriteMiddleware(make_json_app(data), static=static)
     resp = ResponseCollector()
@@ -283,7 +283,7 @@ async def test_non_html_passes_through(static: StaticFiles) -> None:
     assert resp.body == data
 
 
-async def test_rewrite_multiple_paths(static: StaticFiles) -> None:
+async def test_rewrite_multiple_paths(static: HashedStatic) -> None:
     html = '<link href="/static/styles.css"><img src="/static/images/logo.png">'
     app = StaticRewriteMiddleware(make_html_app(html), static=static)
     resp = ResponseCollector()
@@ -293,7 +293,7 @@ async def test_rewrite_multiple_paths(static: StaticFiles) -> None:
     assert f"/static/{static.file_map['images/logo.png']}" in resp.text
 
 
-async def test_rewrite_non_http_passes_through(static: StaticFiles) -> None:
+async def test_rewrite_non_http_passes_through(static: HashedStatic) -> None:
     """Non-HTTP scopes are forwarded to the wrapped app without rewriting."""
     calls: list[str] = []
 
@@ -306,7 +306,7 @@ async def test_rewrite_non_http_passes_through(static: StaticFiles) -> None:
 
 
 async def test_rewrite_raises_runtime_error_on_body_before_start(
-    static: StaticFiles,
+    static: HashedStatic,
 ) -> None:
     """Middleware should raise RuntimeError if app sends body before start.
 
@@ -328,7 +328,7 @@ async def test_rewrite_raises_runtime_error_on_body_before_start(
         await app(make_scope("/"), receive, ResponseCollector())
 
 
-async def test_rewrite_streaming_html_response(static: StaticFiles) -> None:
+async def test_rewrite_streaming_html_response(static: HashedStatic) -> None:
     """Middleware rewrites static paths even when the body arrives in multiple chunks."""
     chunk1 = b'<link href="/static/'
     chunk2 = b'styles.css">'
@@ -355,7 +355,7 @@ async def test_rewrite_streaming_html_response(static: StaticFiles) -> None:
     assert "/static/styles.css" not in resp.text
 
 
-async def test_serve_prefix_only_returns_404(static: StaticFiles) -> None:
+async def test_serve_prefix_only_returns_404(static: HashedStatic) -> None:
     """Requesting /static or /static/ with no filename returns 404."""
     # /static with no trailing slash
     resp_no_slash = ResponseCollector()
@@ -368,7 +368,7 @@ async def test_serve_prefix_only_returns_404(static: StaticFiles) -> None:
     assert resp_slash.status == 404
 
 
-async def test_rewrite_non_utf8_html_passes_through(static: StaticFiles) -> None:
+async def test_rewrite_non_utf8_html_passes_through(static: HashedStatic) -> None:
     """HTML response with non-UTF-8 bytes passes through unchanged."""
     raw_body = b"<html>\x80\x81\x82 not valid utf-8</html>"
 

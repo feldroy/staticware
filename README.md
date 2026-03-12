@@ -23,10 +23,10 @@ ASGI middleware for static file serving with content-based cache busting. Zero r
 ## Quick Start
 
 ```python
-from staticware import StaticFiles, StaticRewriteMiddleware
+from staticware import HashedStatic, StaticRewriteMiddleware
 
 # Point at your static files directory
-static = StaticFiles("static")
+static = HashedStatic("static")
 
 # Mount it however your framework mounts sub-apps:
 app.mount("/static", static)
