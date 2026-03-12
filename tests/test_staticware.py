@@ -61,21 +61,6 @@ def expected_hash(content: bytes, length: int = 8) -> str:
 # ── StaticFiles: hashing and url() ──────────────────────────────────────
 
 
-@pytest.fixture()
-def static_dir(tmp_path: Path) -> Path:
-    d = tmp_path / "static"
-    d.mkdir()
-    (d / "styles.css").write_text("body { color: red; }")
-    sub = d / "images"
-    sub.mkdir()
-    (sub / "logo.png").write_bytes(b"\x89PNG fake image data")
-    return d
-
-
-@pytest.fixture()
-def static(static_dir: Path) -> StaticFiles:
-    return StaticFiles(static_dir)
-
 
 def test_file_map_contains_all_files(static: StaticFiles, static_dir: Path) -> None:
     assert "styles.css" in static.file_map
