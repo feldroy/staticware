@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "staticware"
 version = "0.1.0"
-description = "Staticware is ASGI middleware that rewrites static file paths to c"
+description = "ASGI middleware for static file serving with content-based cache busting"
 readme = "README.md"
 authors = [
   {name = "Audrey M. Roy Greenfeld", email = "audrey@feldroy.com"}
@@ -18,10 +18,7 @@ classifiers = [
     # TODO: Add additional classifiers as needed
 ]
 license = {text = "MIT"}
-dependencies = [
-  "typer",
-  "rich",
-]
+dependencies = []
 requires-python = ">= 3.12"
 
 [dependency-groups]
@@ -50,9 +47,6 @@ bugs = "https://github.com/feldroy/staticware/issues"
 changelog = "https://github.com/feldroy/staticware/releases"
 documentation = "https://feldroy.github.io/staticware/"
 homepage = "https://github.com/feldroy/staticware"
-
-[project.scripts]
-staticware = "staticware.cli:app"
 
 [tool.ty]
 # All rules are enabled as "error" by default; no need to specify unless overriding.
