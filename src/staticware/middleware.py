@@ -118,8 +118,8 @@ class StaticFiles:
         # Hashed filename — serve with immutable caching
         original_path = self._reverse.get(relative_path)
         if original_path:
-            file_path = self.directory / original_path
-            if file_path.exists():
+            file_path = (self.directory / original_path).resolve()
+            if file_path.is_relative_to(self.directory) and file_path.exists():
                 await _send_file(
                     send,
                     file_path,
