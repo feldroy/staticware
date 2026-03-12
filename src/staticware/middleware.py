@@ -128,7 +128,10 @@ class StaticFiles:
                 return
 
         # Original filename — serve without aggressive caching
-        file_path = self.directory / relative_path
+        file_path = (self.directory / relative_path).resolve()
+        if not file_path.is_relative_to(self.directory):
+            await _send_text(send, 404, b"Not Found")
+            return
         if file_path.exists() and file_path.is_file():
             await _send_file(send, file_path)
             return
