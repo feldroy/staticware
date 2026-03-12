@@ -1,7 +1,52 @@
 # Usage
 
-To use Staticware in a project:
+## Basic Setup
+
+Create a `StaticFiles` instance pointing at your static files directory, then wrap your ASGI app with `StaticRewriteMiddleware`:
 
 ```python
-import staticware
+from staticware import StaticFiles, StaticRewriteMiddleware
+
+static = StaticFiles("static")
+app = StaticRewriteMiddleware(your_app, static=static)
+```
+
+`StaticFiles` hashes every file in the directory at startup. When a browser requests the hashed filename, it gets an immutable cache header. When it requests the original filename, the file is served without aggressive caching.
+
+## Resolving URLs in Templates
+
+Use `static.url()` to get the cache-busted URL for a file:
+
+```python
+static.url("styles.css")       # /static/styles.a1b2c3d4.css
+static.url("images/logo.png")  # /static/images/logo.7e4f9a01.png
+```
+
+Unknown paths are returned unchanged with the prefix:
+
+```python
+static.url("nonexistent.js")   # /static/nonexistent.js
+```
+
+## Automatic HTML Rewriting
+
+`StaticRewriteMiddleware` rewrites static paths in HTML responses automatically. Any `text/html` response that references `/static/styles.css` will have it replaced with the hashed equivalent. Non-HTML responses pass through untouched.
+
+This means cache busting works even without explicit `static.url()` calls in templates.
+
+## Configuration
+
+### Custom Prefix
+
+```python
+static = StaticFiles("static", prefix="/assets")
+static.url("styles.css")  # /assets/styles.a1b2c3d4.css
+```
+
+### Hash Length
+
+The default hash is 8 characters from the SHA-256 digest. To change it:
+
+```python
+static = StaticFiles("static", hash_length=12)
 ```

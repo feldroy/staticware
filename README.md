@@ -2,7 +2,7 @@
 
 ![PyPI version](https://img.shields.io/pypi/v/staticware.svg)
 
-Staticware is ASGI middleware that rewrites static file paths to c
+ASGI middleware for static file serving with content-based cache busting. Zero runtime dependencies.
 
 * Created by **[Audrey M. Roy Greenfeld](https://audrey.feldroy.com)**
   * GitHub: https://github.com/audreyfeldroy
@@ -12,7 +12,29 @@ Staticware is ASGI middleware that rewrites static file paths to c
 
 ## Features
 
-* TODO
+* Serves static files over ASGI with content-hashed filenames for cache busting
+* Hashed filenames get `Cache-Control: public, max-age=31536000, immutable`
+* Original filenames still work, without aggressive caching
+* `StaticRewriteMiddleware` automatically rewrites static paths in HTML responses
+* `static.url()` resolves cache-busted URLs for use in templates
+* Works with any ASGI framework: Starlette, FastAPI, Air, Litestar, Django, or raw ASGI
+* Zero runtime dependencies
+
+## Quick Start
+
+```python
+from staticware import StaticFiles, StaticRewriteMiddleware
+
+# Point at your static files directory
+static = StaticFiles("static")
+
+# Wrap any ASGI app to rewrite static paths in HTML responses
+app = StaticRewriteMiddleware(your_app, static=static)
+
+# In templates, resolve cache-busted URLs:
+static.url("styles.css")       # /static/styles.a1b2c3d4.css
+static.url("images/logo.png")  # /static/images/logo.7e4f9a01.png
+```
 
 ## Documentation
 
@@ -31,15 +53,10 @@ Docs deploy automatically on push to `main` via GitHub Actions. To enable this, 
 To set up for local development:
 
 ```bash
-# Clone your fork
-git clone git@github.com:your_username/staticware.git
+git clone git@github.com:feldroy/staticware.git
 cd staticware
-
-# Install in editable mode with live updates
-uv tool install --editable .
+uv sync
 ```
-
-This installs the CLI globally but with live updates - any changes you make to the source code are immediately available when you run `staticware`.
 
 Run tests:
 

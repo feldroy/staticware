@@ -1,6 +1,6 @@
 # Staticware
 
-Staticware is ASGI middleware that rewrites static file paths to c
+ASGI middleware for static file serving with content-based cache busting. Zero runtime dependencies.
 
 ## Getting started
 
