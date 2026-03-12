@@ -33,6 +33,7 @@ lint = [
 test = [
     "coverage",
     "pytest",
+    "pytest-asyncio",
 ]
 typecheck = [
     "ty",
