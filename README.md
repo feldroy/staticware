@@ -28,8 +28,11 @@ from staticware import StaticFiles, StaticRewriteMiddleware
 # Point at your static files directory
 static = StaticFiles("static")
 
+# Mount it however your framework mounts sub-apps:
+app.mount("/static", static)
+
 # Wrap any ASGI app to rewrite static paths in HTML responses
-app = StaticRewriteMiddleware(your_app, static=static)
+app = StaticRewriteMiddleware(app, static=static)
 
 # In templates, resolve cache-busted URLs:
 static.url("styles.css")       # /static/styles.a1b2c3d4.css

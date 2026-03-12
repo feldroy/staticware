@@ -8,10 +8,17 @@ Create a `StaticFiles` instance pointing at your static files directory, then wr
 from staticware import StaticFiles, StaticRewriteMiddleware
 
 static = StaticFiles("static")
-app = StaticRewriteMiddleware(your_app, static=static)
+
+# Mount it however your framework mounts sub-apps:
+app.mount("/static", static)
+
+# Wrap the app to rewrite static paths in HTML responses:
+app = StaticRewriteMiddleware(app, static=static)
 ```
 
 `StaticFiles` hashes every file in the directory at startup. When a browser requests the hashed filename, it gets an immutable cache header. When it requests the original filename, the file is served without aggressive caching.
+
+File hashes are computed once when `StaticFiles` is created. If you deploy updated static files, restart the ASGI process to pick up the new hashes. This is the same model used by Starlette and most ASGI static file handlers.
 
 ## Resolving URLs in Templates
 
