@@ -20,13 +20,14 @@ import hashlib
 import mimetypes
 import re
 from pathlib import Path
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 # ASGI protocol types — inlined so we depend on nothing.
 type Scope = dict[str, Any]
-type Receive = Any  # Callable[[], Awaitable[dict[str, Any]]]
-type Send = Any  # Callable[[dict[str, Any]], Awaitable[None]]
-type ASGIApp = Any  # Callable[[Scope, Receive, Send], Awaitable[None]]
+type Receive = Callable[[], Awaitable[dict[str, Any]]]
+type Send = Callable[[dict[str, Any]], Awaitable[None]]
+type ASGIApp = Callable[[Scope, Receive, Send], Awaitable[None]]
 
 
 class StaticFiles:
