@@ -387,3 +387,77 @@ async def test_rewrite_non_utf8_html_passes_through(static: HashedStatic) -> Non
     resp = ResponseCollector()
     await app(make_scope("/"), receive, resp)
     assert resp.body == raw_body
+
+
+# ── HashedStatic: framework mount compatibility ───────────────────────
+
+
+def make_mount_scope(path: str, *, root_path: str = "") -> dict[str, Any]:
+    """Like make_scope but accepts root_path for framework-mount simulation."""
+    return {"type": "http", "path": path, "root_path": root_path, "method": "GET"}
+
+
+async def test_serve_with_root_path_scope(
+    static: HashedStatic, static_dir: Path
+) -> None:
+    """Starlette-style mount: root_path set, path still includes the prefix.
+
+    Starlette sets scope["root_path"] = "/static" and leaves
+    scope["path"] = "/static/styles.css".  The current code happens to
+    pass because the prefix check still matches, but we need this test
+    to lock in the expected behavior when root_path is present.
+    """
+    resp = ResponseCollector()
+    scope = make_mount_scope("/static/styles.css", root_path="/static")
+    await static(scope, receive, resp)
+    assert resp.status == 200
+    assert resp.text == "body { color: red; }"
+
+
+async def test_serve_with_stripped_path(
+    static: HashedStatic, static_dir: Path
+) -> None:
+    """Litestar-style mount: framework strips the prefix from scope["path"].
+
+    The sub-app sees scope["root_path"] = "/static" and
+    scope["path"] = "/styles.css".  The current code 404s because
+    "/styles.css" does not start with "/static/".
+    """
+    resp = ResponseCollector()
+    scope = make_mount_scope("/styles.css", root_path="/static")
+    await static(scope, receive, resp)
+    assert resp.status == 200
+    assert resp.text == "body { color: red; }"
+    assert b"cache-control" not in resp.headers
+
+
+async def test_serve_hashed_with_stripped_path(static: HashedStatic) -> None:
+    """Litestar-style mount with a hashed filename request.
+
+    scope["root_path"] = "/static", scope["path"] = "/styles.<hash>.css".
+    Should serve the file with immutable cache headers but will 404
+    against current code.
+    """
+    hashed_name = static.file_map["styles.css"]
+    resp = ResponseCollector()
+    scope = make_mount_scope(f"/{hashed_name}", root_path="/static")
+    await static(scope, receive, resp)
+    assert resp.status == 200
+    assert resp.text == "body { color: red; }"
+    assert resp.headers[b"cache-control"] == b"public, max-age=31536000, immutable"
+
+
+async def test_serve_with_mismatched_mount_and_prefix(static_dir: Path) -> None:
+    """Mount prefix differs from HashedStatic prefix.
+
+    HashedStatic is constructed with prefix="/assets" but the framework
+    mounts it at /static, so root_path="/static" and
+    path="/static/styles.css".  The current code 404s because the prefix
+    check looks for "/assets/" which does not match "/static/...".
+    """
+    static = HashedStatic(static_dir, prefix="/assets")
+    resp = ResponseCollector()
+    scope = make_mount_scope("/static/styles.css", root_path="/static")
+    await static(scope, receive, resp)
+    assert resp.status == 200
+    assert resp.text == "body { color: red; }"

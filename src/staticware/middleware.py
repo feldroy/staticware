@@ -118,11 +118,22 @@ class HashedStatic:
             return
 
         request_path: str = scope["path"]
-        if not request_path.startswith(self.prefix + "/"):
-            await _send_text(send, 404, b"Not Found")
-            return
+        root_path: str = scope.get("root_path", "")
 
-        relative_path = request_path[len(self.prefix) + 1 :]
+        if root_path:
+            # Framework mount: use root_path to derive the local path.
+            if request_path.startswith(root_path + "/"):
+                # Starlette-style: path still includes the mount prefix.
+                relative_path = request_path[len(root_path) + 1 :]
+            else:
+                # Litestar-style: framework already stripped the prefix.
+                relative_path = request_path.lstrip("/")
+        else:
+            # Standalone raw ASGI: use self.prefix to find the local path.
+            if not request_path.startswith(self.prefix + "/"):
+                await _send_text(send, 404, b"Not Found")
+                return
+            relative_path = request_path[len(self.prefix) + 1 :]
 
         # Hashed filename — serve with immutable caching
         original_path = self._reverse.get(relative_path)
