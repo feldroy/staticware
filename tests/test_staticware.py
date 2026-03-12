@@ -124,6 +124,33 @@ def test_symlinks_outside_directory_excluded(tmp_path: Path) -> None:
     assert "link.txt" not in s.file_map
 
 
+def test_extensionless_file(tmp_path: Path) -> None:
+    d = tmp_path / "static"
+    d.mkdir()
+    (d / "Makefile").write_text("all: build")
+    s = StaticFiles(d)
+    h = expected_hash(b"all: build")
+    assert s.file_map["Makefile"] == f"Makefile.{h}"
+
+
+def test_dotfile(tmp_path: Path) -> None:
+    d = tmp_path / "static"
+    d.mkdir()
+    (d / ".gitignore").write_text("*.pyc")
+    s = StaticFiles(d)
+    h = expected_hash(b"*.pyc")
+    assert s.file_map[".gitignore"] == f".gitignore.{h}"
+
+
+def test_multi_dot_filename(tmp_path: Path) -> None:
+    d = tmp_path / "static"
+    d.mkdir()
+    (d / "jquery.min.js").write_text("js code")
+    s = StaticFiles(d)
+    h = expected_hash(b"js code")
+    assert s.file_map["jquery.min.js"] == f"jquery.min.{h}.js"
+
+
 # ── StaticFiles: ASGI serving ───────────────────────────────────────────
 
 

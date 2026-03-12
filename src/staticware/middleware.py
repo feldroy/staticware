@@ -83,11 +83,19 @@ class StaticFiles:
             hash_val = hashlib.sha256(content).hexdigest()[: self.hash_length]
 
             # styles.css -> styles.a1b2c3d4.css
-            p = Path(relative)
-            if p.parent != Path():
-                hashed = (p.parent / f"{p.stem}.{hash_val}{p.suffix}").as_posix()
+            # Makefile -> Makefile.a1b2c3d4
+            # .gitignore -> .gitignore.a1b2c3d4
+            name = file_path.name
+            dot = name.rfind(".")
+            if dot > 0:
+                hashed_name = f"{name[:dot]}.{hash_val}{name[dot:]}"
             else:
-                hashed = f"{p.stem}.{hash_val}{p.suffix}"
+                hashed_name = f"{name}.{hash_val}"
+            parent = str(Path(relative).parent)
+            if parent != ".":
+                hashed = f"{parent}/{hashed_name}"
+            else:
+                hashed = hashed_name
 
             self.file_map[relative] = hashed
             self._reverse[hashed] = relative
