@@ -65,6 +65,8 @@ class HashedStatic:
         self.file_map: dict[str, str] = {}
         # hashed relative path -> original relative path
         self._reverse: dict[str, str] = {}
+        # original relative path -> ETag value (quoted hash)
+        self._etags: dict[str, bytes] = {}
 
         self._hash_files()
 
@@ -100,6 +102,7 @@ class HashedStatic:
 
             self.file_map[relative] = hashed
             self._reverse[hashed] = relative
+            self._etags[relative] = f'"{hash_val}"'.encode('latin-1')
 
     def url(self, path: str) -> str:
         """Return the cache-busted URL for a static file path.
@@ -155,7 +158,18 @@ class HashedStatic:
             await _send_text(send, 404, b"Not Found")
             return
         if file_path.exists() and file_path.is_file():
-            await _send_file(send, file_path)
+            etag = self._etags.get(relative_path)
+            if etag:
+                # Check for conditional request (If-None-Match)
+                for hdr_name, hdr_value in scope.get("headers", []):
+                    if hdr_name == b"if-none-match" and hdr_value == etag:
+                        await _send_text(send, 304, b"")
+                        return
+                await _send_file(
+                    send, file_path, extra_headers=[(b"etag", etag)]
+                )
+            else:
+                await _send_file(send, file_path)
             return
 
         await _send_text(send, 404, b"Not Found")

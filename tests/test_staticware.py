@@ -461,3 +461,70 @@ async def test_serve_with_mismatched_mount_and_prefix(static_dir: Path) -> None:
     await static(scope, receive, resp)
     assert resp.status == 200
     assert resp.text == "body { color: red; }"
+
+
+# ── HashedStatic: ETag and conditional requests ──────────────────────
+
+
+def make_scope_with_headers(
+    path: str, headers: list[tuple[bytes, bytes]] | None = None
+) -> dict[str, Any]:
+    scope: dict[str, Any] = {"type": "http", "path": path, "method": "GET"}
+    if headers:
+        scope["headers"] = headers
+    return scope
+
+
+async def test_etag_on_unhashed_response(
+    static: HashedStatic, static_dir: Path
+) -> None:
+    """Original filename response includes an ETag header with the content hash."""
+    resp = ResponseCollector()
+    await static(make_scope("/static/styles.css"), receive, resp)
+    assert resp.status == 200
+
+    css_content = (static_dir / "styles.css").read_bytes()
+    h = expected_hash(css_content)
+    assert b"etag" in resp.headers, "Response should include an etag header"
+    assert resp.headers[b"etag"] == f'"{h}"'.encode("latin-1")
+
+
+async def test_conditional_request_returns_304(
+    static: HashedStatic, static_dir: Path
+) -> None:
+    """If-None-Match with matching ETag returns 304 and empty body."""
+    css_content = (static_dir / "styles.css").read_bytes()
+    h = expected_hash(css_content)
+    etag_value = f'"{h}"'.encode("latin-1")
+
+    scope = make_scope_with_headers(
+        "/static/styles.css",
+        headers=[(b"if-none-match", etag_value)],
+    )
+    resp = ResponseCollector()
+    await static(scope, receive, resp)
+    assert resp.status == 304
+    assert resp.body == b""
+
+
+async def test_conditional_request_mismatched_etag_returns_200(
+    static: HashedStatic,
+) -> None:
+    """If-None-Match with wrong ETag returns 200 with full body."""
+    scope = make_scope_with_headers(
+        "/static/styles.css",
+        headers=[(b"if-none-match", b'"wronghash"')],
+    )
+    resp = ResponseCollector()
+    await static(scope, receive, resp)
+    assert resp.status == 200
+    assert resp.text == "body { color: red; }"
+
+
+async def test_hashed_url_no_etag(static: HashedStatic) -> None:
+    """Hashed URL responses use immutable caching and should not include an ETag."""
+    hashed_name = static.file_map["styles.css"]
+    resp = ResponseCollector()
+    await static(make_scope(f"/static/{hashed_name}"), receive, resp)
+    assert resp.status == 200
+    assert b"etag" not in resp.headers, "Hashed URL should not include an etag header"
