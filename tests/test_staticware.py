@@ -342,3 +342,67 @@ async def test_rewrite_raises_runtime_error_on_body_before_start(
     app = StaticRewriteMiddleware(broken_app, static=static)
     with pytest.raises(RuntimeError):
         await app(make_scope("/"), receive, ResponseCollector())
+
+
+@pytest.mark.asyncio
+async def test_rewrite_streaming_html_response(static: StaticFiles) -> None:
+    """Middleware rewrites static paths even when the body arrives in multiple chunks."""
+    chunk1 = b'<link href="/static/'
+    chunk2 = b'styles.css">'
+
+    async def streaming_app(scope: dict, receive: Any, send: Any) -> None:
+        total = len(chunk1) + len(chunk2)
+        await send({
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [
+                (b"content-type", b"text/html; charset=utf-8"),
+                (b"content-length", str(total).encode("latin-1")),
+            ],
+        })
+        await send({"type": "http.response.body", "body": chunk1, "more_body": True})
+        await send({"type": "http.response.body", "body": chunk2, "more_body": False})
+
+    app = StaticRewriteMiddleware(streaming_app, static=static)
+    resp = ResponseCollector()
+    await app(make_scope("/"), receive, resp)
+
+    hashed = static.file_map["styles.css"]
+    assert f"/static/{hashed}" in resp.text
+    assert "/static/styles.css" not in resp.text
+
+
+@pytest.mark.asyncio
+async def test_serve_prefix_only_returns_404(static: StaticFiles) -> None:
+    """Requesting /static or /static/ with no filename returns 404."""
+    # /static with no trailing slash
+    resp_no_slash = ResponseCollector()
+    await static(make_scope("/static"), receive, resp_no_slash)
+    assert resp_no_slash.status == 404
+
+    # /static/ with trailing slash but no filename
+    resp_slash = ResponseCollector()
+    await static(make_scope("/static/"), receive, resp_slash)
+    assert resp_slash.status == 404
+
+
+@pytest.mark.asyncio
+async def test_rewrite_non_utf8_html_passes_through(static: StaticFiles) -> None:
+    """HTML response with non-UTF-8 bytes passes through unchanged."""
+    raw_body = b"<html>\x80\x81\x82 not valid utf-8</html>"
+
+    async def bad_encoding_app(scope: dict, receive: Any, send: Any) -> None:
+        await send({
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [
+                (b"content-type", b"text/html; charset=utf-8"),
+                (b"content-length", str(len(raw_body)).encode("latin-1")),
+            ],
+        })
+        await send({"type": "http.response.body", "body": raw_body})
+
+    app = StaticRewriteMiddleware(bad_encoding_app, static=static)
+    resp = ResponseCollector()
+    await app(make_scope("/"), receive, resp)
+    assert resp.body == raw_body
