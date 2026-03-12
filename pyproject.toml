@@ -14,8 +14,14 @@ maintainers = [
   {name = "Audrey M. Roy Greenfeld", email = "audrey@feldroy.com"}
 ]
 classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: AsyncIO",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
-    # TODO: Add additional classifiers as needed
 ]
 license = {text = "MIT"}
 dependencies = []
@@ -44,10 +50,11 @@ docs = [
 ]
 
 [project.urls]
-bugs = "https://github.com/feldroy/staticware/issues"
-changelog = "https://github.com/feldroy/staticware/releases"
-documentation = "https://feldroy.github.io/staticware/"
-homepage = "https://github.com/feldroy/staticware"
+Bugs = "https://github.com/feldroy/staticware/issues"
+Changelog = "https://github.com/feldroy/staticware/releases"
+Documentation = "https://feldroy.github.io/staticware/"
+Homepage = "https://github.com/feldroy/staticware"
+Source = "https://github.com/feldroy/staticware"
 
 [tool.ty]
 # All rules are enabled as "error" by default; no need to specify unless overriding.
