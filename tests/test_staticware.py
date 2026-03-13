@@ -22,7 +22,6 @@ import pytest
 
 from staticware import HashedStatic, StaticRewriteMiddleware
 
-
 # ── Helpers ──────────────────────────────────────────────────────────────
 
 
@@ -59,7 +58,6 @@ def expected_hash(content: bytes, length: int = 8) -> str:
 
 
 # ── HashedStatic: hashing and url() ──────────────────────────────────────
-
 
 
 def test_file_map_contains_all_files(static: HashedStatic, static_dir: Path) -> None:
@@ -216,14 +214,16 @@ def make_html_app(html: str):
     body = html.encode("utf-8")
 
     async def app(scope: dict, receive: Any, send: Any) -> None:
-        await send({
-            "type": "http.response.start",
-            "status": 200,
-            "headers": [
-                (b"content-type", b"text/html; charset=utf-8"),
-                (b"content-length", str(len(body)).encode("latin-1")),
-            ],
-        })
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    (b"content-type", b"text/html; charset=utf-8"),
+                    (b"content-length", str(len(body)).encode("latin-1")),
+                ],
+            }
+        )
         await send({"type": "http.response.body", "body": body})
 
     return app
@@ -233,14 +233,16 @@ def make_json_app(data: bytes):
     """Create a dummy ASGI app that returns JSON."""
 
     async def app(scope: dict, receive: Any, send: Any) -> None:
-        await send({
-            "type": "http.response.start",
-            "status": 200,
-            "headers": [
-                (b"content-type", b"application/json"),
-                (b"content-length", str(len(data)).encode("latin-1")),
-            ],
-        })
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(data)).encode("latin-1")),
+                ],
+            }
+        )
         await send({"type": "http.response.body", "body": data})
 
     return app
@@ -318,10 +320,12 @@ async def test_rewrite_raises_runtime_error_on_body_before_start(
 
     async def broken_app(scope: dict, receive: Any, send: Any) -> None:
         # Skip http.response.start entirely — straight to body.
-        await send({
-            "type": "http.response.body",
-            "body": b"<html>oops</html>",
-        })
+        await send(
+            {
+                "type": "http.response.body",
+                "body": b"<html>oops</html>",
+            }
+        )
 
     app = StaticRewriteMiddleware(broken_app, static=static)
     with pytest.raises(RuntimeError):
@@ -335,14 +339,16 @@ async def test_rewrite_streaming_html_response(static: HashedStatic) -> None:
 
     async def streaming_app(scope: dict, receive: Any, send: Any) -> None:
         total = len(chunk1) + len(chunk2)
-        await send({
-            "type": "http.response.start",
-            "status": 200,
-            "headers": [
-                (b"content-type", b"text/html; charset=utf-8"),
-                (b"content-length", str(total).encode("latin-1")),
-            ],
-        })
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    (b"content-type", b"text/html; charset=utf-8"),
+                    (b"content-length", str(total).encode("latin-1")),
+                ],
+            }
+        )
         await send({"type": "http.response.body", "body": chunk1, "more_body": True})
         await send({"type": "http.response.body", "body": chunk2, "more_body": False})
 
@@ -373,14 +379,16 @@ async def test_rewrite_non_utf8_html_passes_through(static: HashedStatic) -> Non
     raw_body = b"<html>\x80\x81\x82 not valid utf-8</html>"
 
     async def bad_encoding_app(scope: dict, receive: Any, send: Any) -> None:
-        await send({
-            "type": "http.response.start",
-            "status": 200,
-            "headers": [
-                (b"content-type", b"text/html; charset=utf-8"),
-                (b"content-length", str(len(raw_body)).encode("latin-1")),
-            ],
-        })
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    (b"content-type", b"text/html; charset=utf-8"),
+                    (b"content-length", str(len(raw_body)).encode("latin-1")),
+                ],
+            }
+        )
         await send({"type": "http.response.body", "body": raw_body})
 
     app = StaticRewriteMiddleware(bad_encoding_app, static=static)
@@ -397,9 +405,7 @@ def make_mount_scope(path: str, *, root_path: str = "") -> dict[str, Any]:
     return {"type": "http", "path": path, "root_path": root_path, "method": "GET"}
 
 
-async def test_serve_with_root_path_scope(
-    static: HashedStatic, static_dir: Path
-) -> None:
+async def test_serve_with_root_path_scope(static: HashedStatic, static_dir: Path) -> None:
     """Starlette-style mount: root_path set, path still includes the prefix.
 
     Starlette sets scope["root_path"] = "/static" and leaves
@@ -414,9 +420,7 @@ async def test_serve_with_root_path_scope(
     assert resp.text == "body { color: red; }"
 
 
-async def test_serve_with_stripped_path(
-    static: HashedStatic, static_dir: Path
-) -> None:
+async def test_serve_with_stripped_path(static: HashedStatic, static_dir: Path) -> None:
     """Litestar-style mount: framework strips the prefix from scope["path"].
 
     The sub-app sees scope["root_path"] = "/static" and
@@ -466,18 +470,14 @@ async def test_serve_with_mismatched_mount_and_prefix(static_dir: Path) -> None:
 # ── HashedStatic: ETag and conditional requests ──────────────────────
 
 
-def make_scope_with_headers(
-    path: str, headers: list[tuple[bytes, bytes]] | None = None
-) -> dict[str, Any]:
+def make_scope_with_headers(path: str, headers: list[tuple[bytes, bytes]] | None = None) -> dict[str, Any]:
     scope: dict[str, Any] = {"type": "http", "path": path, "method": "GET"}
     if headers:
         scope["headers"] = headers
     return scope
 
 
-async def test_etag_on_unhashed_response(
-    static: HashedStatic, static_dir: Path
-) -> None:
+async def test_etag_on_unhashed_response(static: HashedStatic, static_dir: Path) -> None:
     """Original filename response includes an ETag header with the content hash."""
     resp = ResponseCollector()
     await static(make_scope("/static/styles.css"), receive, resp)
@@ -489,9 +489,7 @@ async def test_etag_on_unhashed_response(
     assert resp.headers[b"etag"] == f'"{h}"'.encode("latin-1")
 
 
-async def test_conditional_request_returns_304(
-    static: HashedStatic, static_dir: Path
-) -> None:
+async def test_conditional_request_returns_304(static: HashedStatic, static_dir: Path) -> None:
     """If-None-Match with matching ETag returns 304 and empty body."""
     css_content = (static_dir / "styles.css").read_bytes()
     h = expected_hash(css_content)
