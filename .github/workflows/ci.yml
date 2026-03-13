@@ -72,9 +72,33 @@ jobs:
           path: .coverage.*
           include-hidden-files: true
 
+  test-django:
+    name: Test Django (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7.3.0
+
+      - name: Run Django tests with coverage
+        run: uv run --python=${{ matrix.python-version }} --group django coverage run -m pytest tests/django/
+
+      - name: Upload coverage data
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: coverage-django-${{ matrix.python-version }}
+          path: .coverage.*
+          include-hidden-files: true
+
   coverage:
     name: Coverage
-    needs: test
+    needs: [test, test-django]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -102,7 +126,7 @@ jobs:
   all-checks-pass:
     name: All checks pass
     if: always()
-    needs: [lint, type-check, test, coverage]
+    needs: [lint, type-check, test, test-django, coverage]
     runs-on: ubuntu-latest
     steps:
       - name: Check job results
