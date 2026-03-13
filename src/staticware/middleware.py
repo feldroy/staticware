@@ -8,7 +8,7 @@ framework: Starlette, FastAPI, Air, Litestar, Django, or raw ASGI.
     static = HashedStatic("static")
 
     # Wrap any ASGI app to rewrite /static/styles.css -> /static/styles.a1b2c3d4.css
-    app = StaticRewriteMiddleware(your_app, static=static)
+    app.add_middleware(StaticRewriteMiddleware, static=static)
 
     # In templates:
     static.url("styles.css")  # -> /static/styles.a1b2c3d4.css
@@ -184,7 +184,7 @@ class StaticRewriteMiddleware:
     HTML — no template function needed (though ``static.url()`` is there
     if you want it).
 
-        app = StaticRewriteMiddleware(app, static=static)
+        app.add_middleware(StaticRewriteMiddleware, static=static)
     """
 
     def __init__(self, app: ASGIApp, *, static: HashedStatic) -> None:
@@ -251,7 +251,7 @@ class StaticRewriteMiddleware:
                     await send({"type": "http.response.body", "body": full_body})
                 return
 
-        return await self.app(scope, receive, send_wrapper)
+        await self.app(scope, receive, send_wrapper)
 
 
 # ── Raw ASGI helpers ────────────────────────────────────────────────────
