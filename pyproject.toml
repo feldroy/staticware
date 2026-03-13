@@ -41,6 +41,10 @@ test = [
     "pytest",
     "pytest-asyncio",
 ]
+django = [
+    { include-group = "test" },
+    "django>=4.2",
+]
 typecheck = [
     "ty",
 ]
