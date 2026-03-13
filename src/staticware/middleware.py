@@ -19,15 +19,15 @@ from __future__ import annotations
 import hashlib
 import mimetypes
 import re
-from pathlib import Path
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from typing import Any
 
 # ASGI protocol types — inlined so we depend on nothing.
 type Scope = dict[str, Any]
 type Receive = Callable[[], Awaitable[dict[str, Any]]]
 type Send = Callable[[dict[str, Any]], Awaitable[None]]
-type ASGIApp = Callable[[Scope, Receive, Send], Awaitable[None]]
+type ASGIApp = Callable[[Scope, Receive, Send], Awaitable[Any]]
 
 
 class HashedStatic:
@@ -102,7 +102,7 @@ class HashedStatic:
 
             self.file_map[relative] = hashed
             self._reverse[hashed] = relative
-            self._etags[relative] = f'"{hash_val}"'.encode('latin-1')
+            self._etags[relative] = f'"{hash_val}"'.encode("latin-1")
 
     def url(self, path: str) -> str:
         """Return the cache-busted URL for a static file path.
@@ -165,9 +165,7 @@ class HashedStatic:
                     if hdr_name == b"if-none-match" and hdr_value == etag:
                         await _send_text(send, 304, b"")
                         return
-                await _send_file(
-                    send, file_path, extra_headers=[(b"etag", etag)]
-                )
+                await _send_file(send, file_path, extra_headers=[(b"etag", etag)])
             else:
                 await _send_file(send, file_path)
             return
@@ -201,10 +199,9 @@ class StaticRewriteMiddleware:
             return f"{self.static.prefix}/{self.static.file_map[path]}"
         return match.group(0)
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> Any:
         if scope["type"] != "http":
-            await self.app(scope, receive, send)
-            return
+            return await self.app(scope, receive, send)
 
         response_start: dict[str, Any] | None = None
         body_parts: list[bytes] = []
@@ -225,9 +222,7 @@ class StaticRewriteMiddleware:
 
             if message["type"] == "http.response.body":
                 if response_start is None:
-                    raise RuntimeError(
-                        "http.response.body received before http.response.start"
-                    )
+                    raise RuntimeError("http.response.body received before http.response.start")
                 if not is_html:
                     await send(message)
                     return
@@ -246,13 +241,9 @@ class StaticRewriteMiddleware:
                         pass
 
                     if response_start is None:
-                        raise RuntimeError(
-                            "http.response.body received before http.response.start"
-                        )
+                        raise RuntimeError("http.response.body received before http.response.start")
                     new_headers = [
-                        (k, str(len(full_body)).encode("latin-1"))
-                        if k == b"content-length"
-                        else (k, v)
+                        (k, str(len(full_body)).encode("latin-1")) if k == b"content-length" else (k, v)
                         for k, v in response_start.get("headers", [])
                     ]
                     response_start["headers"] = new_headers
@@ -260,7 +251,7 @@ class StaticRewriteMiddleware:
                     await send({"type": "http.response.body", "body": full_body})
                 return
 
-        await self.app(scope, receive, send_wrapper)
+        return await self.app(scope, receive, send_wrapper)
 
 
 # ── Raw ASGI helpers ────────────────────────────────────────────────────
@@ -283,28 +274,36 @@ async def _send_file(
     if extra_headers:
         headers.extend(extra_headers)
 
-    await send({
-        "type": "http.response.start",
-        "status": 200,
-        "headers": headers,
-    })
-    await send({
-        "type": "http.response.body",
-        "body": content,
-    })
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 200,
+            "headers": headers,
+        }
+    )
+    await send(
+        {
+            "type": "http.response.body",
+            "body": content,
+        }
+    )
 
 
 async def _send_text(send: Send, status: int, body: bytes) -> None:
     """Send a plain-text ASGI response."""
-    await send({
-        "type": "http.response.start",
-        "status": status,
-        "headers": [
-            (b"content-type", b"text/plain"),
-            (b"content-length", str(len(body)).encode("latin-1")),
-        ],
-    })
-    await send({
-        "type": "http.response.body",
-        "body": body,
-    })
+    await send(
+        {
+            "type": "http.response.start",
+            "status": status,
+            "headers": [
+                (b"content-type", b"text/plain"),
+                (b"content-length", str(len(body)).encode("latin-1")),
+            ],
+        }
+    )
+    await send(
+        {
+            "type": "http.response.body",
+            "body": body,
+        }
+    )
