@@ -12,7 +12,7 @@ static = HashedStatic("static")
 # Mount it however your framework mounts sub-apps:
 app.mount("/static", static)
 
-# Wrap the app to rewrite static paths in HTML responses:
+# If you're using Starlette / FastAPI / Air, add the middleware to your app like this:
 app.add_middleware(StaticRewriteMiddleware, static=static)
 ```
 
