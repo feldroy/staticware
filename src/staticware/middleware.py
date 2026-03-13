@@ -212,9 +212,12 @@ class StaticRewriteMiddleware:
 
             if message["type"] == "http.response.start":
                 response_start = message
-                headers = dict(message.get("headers", []))
-                content_type = headers.get(b"content-type", b"").decode("latin-1")
-                is_html = "text/html" in content_type
+                content_type = b""
+                for hdr_name, hdr_value in message.get("headers", []):
+                    if hdr_name.lower() == b"content-type":
+                        content_type = hdr_value
+                        break
+                is_html = b"text/html" in content_type
                 if not is_html:
                     # Not HTML — send the start immediately and short-circuit.
                     await send(message)
@@ -243,7 +246,7 @@ class StaticRewriteMiddleware:
                     if response_start is None:
                         raise RuntimeError("http.response.body received before http.response.start")
                     new_headers = [
-                        (k, str(len(full_body)).encode("latin-1")) if k == b"content-length" else (k, v)
+                        (k, str(len(full_body)).encode("latin-1")) if k.lower() == b"content-length" else (k, v)
                         for k, v in response_start.get("headers", [])
                     ]
                     response_start["headers"] = new_headers

@@ -58,25 +58,7 @@ def get_asgi_application():
 
     django_app = django_get_asgi_application()
     static = get_static()
-
-    async def _normalized_django(scope, receive, send):
-        """Wrap Django's ASGI app to normalize header names to lowercase.
-
-        The ASGI spec requires lowercase header names, but Django sends
-        mixed-case headers like ``Content-Type``. StaticRewriteMiddleware
-        looks for ``content-type`` per the spec, so we normalize here.
-        """
-        async def normalizing_send(message):
-            if message.get("type") == "http.response.start" and "headers" in message:
-                message = {
-                    **message,
-                    "headers": [(k.lower(), v) for k, v in message["headers"]],
-                }
-            await send(message)
-
-        await django_app(scope, receive, normalizing_send)
-
-    wrapped = StaticRewriteMiddleware(_normalized_django, static=static)
+    wrapped = StaticRewriteMiddleware(django_app, static=static)
 
     async def combined(scope, receive, send):
         if scope["type"] == "http" and scope["path"].startswith(static.prefix + "/"):

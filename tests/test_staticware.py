@@ -397,6 +397,37 @@ async def test_rewrite_non_utf8_html_passes_through(static: HashedStatic) -> Non
     assert resp.body == raw_body
 
 
+# ── StaticRewriteMiddleware: mixed-case header tolerance ──────────────
+
+
+async def test_rewrite_handles_mixed_case_content_type(static: HashedStatic) -> None:
+    """Middleware rewrites HTML even when headers use mixed case (e.g. Django)."""
+    html = '<link href="/static/styles.css">'
+    body = html.encode("utf-8")
+
+    async def mixed_case_app(scope, receive, send):
+        await send({
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [
+                (b"Content-Type", b"text/html; charset=utf-8"),
+                (b"Content-Length", str(len(body)).encode("latin-1")),
+            ],
+        })
+        await send({"type": "http.response.body", "body": body})
+
+    app = StaticRewriteMiddleware(mixed_case_app, static=static)
+    resp = ResponseCollector()
+    await app(make_scope("/"), receive, resp)
+
+    hashed = static.file_map["styles.css"]
+    assert f"/static/{hashed}" in resp.text
+    assert "/static/styles.css" not in resp.text
+    # Content-Length must reflect the rewritten body, not the original
+    declared_length = int(resp.headers[b"Content-Length"].decode())
+    assert declared_length == len(resp.body)
+
+
 # ── HashedStatic: framework mount compatibility ───────────────────────
 
 
