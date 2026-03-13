@@ -207,3 +207,20 @@ async def test_get_asgi_application_rewrites_html(static_dir: Path) -> None:
         hashed = static.file_map["styles.css"]
         assert f"/static/{hashed}" in resp.text
         assert "/static/styles.css" not in resp.text
+
+
+# ── Django AppConfig: no unnecessary attributes ──────────────────────────
+
+
+def test_app_config_has_no_default_auto_field() -> None:
+    """StaticwareDjangoConfig should not set default_auto_field (no models)."""
+    from staticware.contrib.django.apps import StaticwareDjangoConfig
+
+    assert "default_auto_field" not in vars(StaticwareDjangoConfig)
+
+
+def test_no_deprecated_default_app_config() -> None:
+    """The django integration module should not set default_app_config (removed in Django 5.1)."""
+    import staticware.contrib.django as django_mod
+
+    assert not hasattr(django_mod, "default_app_config")

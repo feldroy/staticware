@@ -1,8 +1,4 @@
-"""Django integration for staticware."""
-
 from __future__ import annotations
-
-default_app_config = "staticware.contrib.django.apps.StaticwareDjangoConfig"
 
 _static_instance = None
 
