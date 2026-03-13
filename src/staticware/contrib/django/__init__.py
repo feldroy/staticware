@@ -23,8 +23,7 @@ def get_static():
     directory = getattr(settings, "STATICWARE_DIRECTORY", None)
     if directory is None:
         raise ImproperlyConfigured(
-            "STATICWARE_DIRECTORY must be set in your Django settings "
-            "to use staticware's Django integration."
+            "STATICWARE_DIRECTORY must be set in your Django settings to use staticware's Django integration."
         )
 
     prefix = getattr(settings, "STATICWARE_PREFIX", None)

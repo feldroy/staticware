@@ -406,14 +406,16 @@ async def test_rewrite_handles_mixed_case_content_type(static: HashedStatic) -> 
     body = html.encode("utf-8")
 
     async def mixed_case_app(scope, receive, send):
-        await send({
-            "type": "http.response.start",
-            "status": 200,
-            "headers": [
-                (b"Content-Type", b"text/html; charset=utf-8"),
-                (b"Content-Length", str(len(body)).encode("latin-1")),
-            ],
-        })
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    (b"Content-Type", b"text/html; charset=utf-8"),
+                    (b"Content-Length", str(len(body)).encode("latin-1")),
+                ],
+            }
+        )
         await send({"type": "http.response.body", "body": body})
 
     app = StaticRewriteMiddleware(mixed_case_app, static=static)
