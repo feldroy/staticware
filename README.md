@@ -32,7 +32,7 @@ static = HashedStatic("static")
 app.mount("/static", static)
 
 # Wrap any ASGI app to rewrite static paths in HTML responses
-app = StaticRewriteMiddleware(app, static=static)
+app.add_middleware(StaticRewriteMiddleware, static=static)
 
 # In templates, resolve cache-busted URLs:
 static.url("styles.css")       # /static/styles.a1b2c3d4.css

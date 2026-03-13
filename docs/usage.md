@@ -13,7 +13,7 @@ static = HashedStatic("static")
 app.mount("/static", static)
 
 # Wrap the app to rewrite static paths in HTML responses:
-app = StaticRewriteMiddleware(app, static=static)
+app.add_middleware(StaticRewriteMiddleware, static=static)
 ```
 
 `HashedStatic` hashes every file in the directory at startup. When a browser requests the hashed filename, it gets an immutable cache header. When it requests the original filename, the file is served without aggressive caching.
