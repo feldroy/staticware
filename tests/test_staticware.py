@@ -528,3 +528,58 @@ async def test_hashed_url_no_etag(static: HashedStatic) -> None:
     await static(make_scope(f"/static/{hashed_name}"), receive, resp)
     assert resp.status == 200
     assert b"etag" not in resp.headers, "Hashed URL should not include an etag header"
+
+
+# ── StaticRewriteMiddleware: return value propagation ──────────────
+
+
+async def test_rewrite_middleware_returns_inner_app_result(
+    static: HashedStatic,
+) -> None:
+    """Middleware should propagate the inner app's return value on the HTTP path.
+
+    ASGI apps normally return None, but the spec does not forbid return values.
+    Frameworks like Starlette rely on ``return await self.app(...)`` so that
+    return values propagate through the middleware chain.  A bare ``await``
+    without ``return`` silently discards the result.
+    """
+    sentinel = "app_result"
+
+    async def inner_app(scope: dict, receive: Any, send: Any) -> str:
+        body = b"<html>hello</html>"
+        await send({
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [
+                (b"content-type", b"text/html; charset=utf-8"),
+                (b"content-length", str(len(body)).encode("latin-1")),
+            ],
+        })
+        await send({"type": "http.response.body", "body": body})
+        return sentinel
+
+    app = StaticRewriteMiddleware(inner_app, static=static)
+    resp = ResponseCollector()
+    result = await app(make_scope("/"), receive, resp)
+    assert result == sentinel
+
+
+async def test_rewrite_middleware_returns_inner_app_result_non_http(
+    static: HashedStatic,
+) -> None:
+    """Middleware should propagate the inner app's return value for non-HTTP scopes.
+
+    When the scope type is not "http", the middleware forwards directly to the
+    inner app.  It must ``return await self.app(...)`` so the return value is
+    not silently discarded.
+    """
+    sentinel = "ws_result"
+
+    async def inner_app(scope: dict, receive: Any, send: Any) -> str:
+        return sentinel
+
+    app = StaticRewriteMiddleware(inner_app, static=static)
+    result = await app(
+        {"type": "websocket", "path": "/"}, receive, ResponseCollector()
+    )
+    assert result == sentinel

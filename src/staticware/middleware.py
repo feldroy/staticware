@@ -203,8 +203,7 @@ class StaticRewriteMiddleware:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
-            await self.app(scope, receive, send)
-            return
+            return await self.app(scope, receive, send)
 
         response_start: dict[str, Any] | None = None
         body_parts: list[bytes] = []
@@ -260,7 +259,7 @@ class StaticRewriteMiddleware:
                     await send({"type": "http.response.body", "body": full_body})
                 return
 
-        await self.app(scope, receive, send_wrapper)
+        return await self.app(scope, receive, send_wrapper)
 
 
 # ── Raw ASGI helpers ────────────────────────────────────────────────────
