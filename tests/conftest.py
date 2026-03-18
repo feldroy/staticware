@@ -4,6 +4,12 @@ import pytest
 
 from staticware import HashedStatic
 
+collect_ignore: list[str] = []
+try:
+    import django  # noqa: F401
+except ImportError:
+    collect_ignore.append("django")
+
 
 @pytest.fixture()
 def static_dir(tmp_path: Path) -> Path:

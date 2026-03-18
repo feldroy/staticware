@@ -41,6 +41,10 @@ test = [
     "pytest",
     "pytest-asyncio",
 ]
+django = [
+    { include-group = "test" },
+    "django>=4.2",
+]
 typecheck = [
     "ty",
 ]
@@ -61,10 +65,8 @@ Source = "https://github.com/feldroy/staticware"
 # No @pytest.mark.asyncio decorator needed. Plain `def test_*` runs normally.
 asyncio_mode = "auto"
 
-[tool.ty]
-# All rules are enabled as "error" by default; no need to specify unless overriding.
-# Example override: relax a rule for the entire project (uncomment if needed).
-# rules.TY015 = "warn"  # For invalid-argument-type, warn instead of error.
+[tool.ty.src]
+exclude = ["src/staticware/contrib/django/", "tests/"]
 
 [tool.ruff]
 line-length = 120
